@@ -1,4 +1,4 @@
-var createCanvas = require("canvas");
+var createCanvas = require("canvas").createCanvas;
 
 module.exports = function(text) {
     var canvasHeight = text.split("\n").length * 12 + 8;
@@ -8,7 +8,7 @@ module.exports = function(text) {
     ctx.fillStyle = "#222222";
     ctx.fillRect(0,0,512,canvasHeight);
 
-    ctx.font = "12px Consolas";
+    ctx.font = "12px monospace";
     ctx.fillStyle = "#fefefe";
     ctx.fillText(text, 4, 4);
 

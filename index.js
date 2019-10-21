@@ -2,12 +2,12 @@ var app = require('express')();
 var server = require('http').Server(app);
 var fs = require("fs");
 var request = require("request");
-
 var concat = require('concat-stream');
 
+var auth = require(__dirname + "/auth.json");
 
 function associateTrelloUser(userObj) {
-    return require(__dirname + "/trelloUsers.json").find(x=>x.id==userObj.id) || {};
+    return require(__dirname + "/trelloUsers.json").find(x=>x.id==(userObj||{}).id) || {};
 }
 var submitGoogleForm = require(__dirname + "/googleformssubmit.js");
 var uploadFileToGoogle = require(__dirname + "/googlefileupload.js");
@@ -25,7 +25,9 @@ app.use(function(req, res, next){
 app.get("/", function(req, res) {
     res.sendFile(__dirname + "/pages/index.html");
 });
-
+app.get("/renderedtext", function(req, res) {
+    res.sendFile(__dirname + "/ftc_doc.png");
+});
 app.post("/webhook", function(req,res) {
     let body = req.body.toString();
     try {
@@ -43,8 +45,8 @@ app.post("/webhook", function(req,res) {
             let featureName = bodyParse.action.data.card.name;
             let dayProgress = bodyParse.action.data.text;
             let day = new Date();
-            let documentor = associateTrelloUser(bodyParse.action.memberCreate).realName || "Robo Jones";
-            let githubFilePath = cardBody.customFields.find(x=>x.idCustomField=="5da6e15f9c98160fd8581746").value.text;
+            let documentor = associateTrelloUser({id:bodyParse.action.idMemberCreator}).realName || "Robo Jones";
+            let githubFilePath = cardBody.customFieldItems.find(x=>x.idCustomField=="5da6e15f9c98160fd8581746").value.text;
 
             recognizeGithubPath(githubFilePath, function(err, githubFileObj) {
                 if(err) return false;
@@ -60,12 +62,13 @@ app.post("/webhook", function(req,res) {
                     if(err) return false;
 
                     let imgBuffer = renderText(githubDifferenceText);
+                    fs.writeFileSync("ftc_doc.png", imgBuffer);
 
                     uploadFileToGoogle(imgBuffer, auth.googleCookie, "ftc_doc.png", function(err, data) {
                         let jsonData = JSON.parse(data);
                         let imageId = jsonData.sessionStatus.additionalInfo["uploader_service.GoogleRupioAdditionalInfo"].completionInfo.customerSpecificInfo.id;
 
-                        let formImageSubmitString = "[[[\\\""+imageId+"\\\",\\\"ftc_doc.png\\\",\\\"image/png\\\"]]]";
+                        let formImageSubmitString = JSON.stringify([[[imageId,"ftc_doc.png","image/png"]]]);
                         let formData = {};
 
                         formData[auth.formFieldMedia] = formImageSubmitString;
@@ -76,6 +79,8 @@ app.post("/webhook", function(req,res) {
                         formData[auth.formFieldDate + "_year"] = day.getFullYear();
                         formData[auth.formFieldDate + "_month"] = day.getMonth() + 1;
                         formData[auth.formFieldDate + "_day"] = day.getDate();
+
+                        console.log(formData);
 
                         submitGoogleForm(auth.docFormId, formData, auth.googleCookie, function(err, res, dat) {
                             if(err) console.error(err);

@@ -1,4 +1,5 @@
 var fs = require("fs");
+var request = require("request");
 
 module.exports = function(formId, formData, cookie, callback) {
 formData.fvv = "1";
