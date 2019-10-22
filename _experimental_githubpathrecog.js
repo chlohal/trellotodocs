@@ -12,7 +12,7 @@ module.exports = function(path, topLevelCallback) {
 
     paths = paths.map(a=>parseFilePath(a));
 
-    let repoOwnerPath = __dirname + "/repocache/" + repo.owner;
+    let repoOwnerPath = __dirname + "/.repocache/" + repo.owner;
 
     if(!fs.existsSync(repoOwnerPath)) fs.mkdirSync(repoOwnerPath);
 
@@ -20,8 +20,6 @@ module.exports = function(path, topLevelCallback) {
     else cp.exec("git pull", {cwd: repoOwnerPath + "/" + repo.repo}, gitUpdateCallback);
 
 function gitUpdateCallback(err, stdout, stderr) {
-    console.log("GUC called");
-    console.log(stdout.toString());
     if(stderr) return topLevelCallback(stderr);
 
     cp.exec("git log -n 1 --pretty=\"format:%H\" -- " + paths.map(b=>escapeShell(b)).join(" ")  +
@@ -29,13 +27,11 @@ function gitUpdateCallback(err, stdout, stderr) {
             paths.map(b=>escapeShell(b)).join(" ") +
             ") --no-color --numstat | cat", {cwd: repoOwnerPath + "/" + repo.repo}, function(err, stdout, stderr) {
          if(typeof stdout != "string") stdout = stdout.toString();
-         console.log("PRETTY",stdout);
          let diffSummaries = stdout.split("--TRELLOTODOCSGITPARSINGBOUNDRY--").slice(1).join("--TRELLOTODOCSGITPARSINGBOUNDRY--").split("\n").map(c=>c.split(/\s+/));
          diffSummaries.forEach(d=>d[2]=d.slice(2).join(" "));
 
          let fileDiffs = {};
          let completedFileCount = 0;
-         console.log(diffSummaries);
 
          for(let i = 0; i < paths.length; i++) {
              let currentPath = paths[i];
@@ -47,7 +43,6 @@ function gitUpdateCallback(err, stdout, stderr) {
                      largestChangeCount = parseInt(diffSummaries[j][0]) + parseInt(diffSummaries[j][1]);
                  }
              }
-             console.log(largestChangeFile);
              cp.exec("git show " + stdout.split("--TRELLOTODOCSGITPARSINGBOUNDRY--")[0] + ":" + largestChangeFile + " | cat", {cwd: repoOwnerPath + "/" + repo.repo}, function(showErr, showStdout, showStderr) {
                  completedFileCount++;
 
@@ -57,7 +52,7 @@ function gitUpdateCallback(err, stdout, stderr) {
                      rank: largestChangeCount
                  }
 
-                 if(completedFileCount = paths.length) topLevelCallback(fileDiffs);
+                 if(completedFileCount = paths.length) topLevelCallback(null, fileDiffs);
              });
          }
     });

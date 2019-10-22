@@ -49,8 +49,8 @@ app.post("/webhook", function(req,res) {
             let githubFilePath = cardBody.customFieldItems.find(x=>x.idCustomField=="5da6e15f9c98160fd8581746").value.text;
 
             recognizeGithubPath(githubFilePath, function(err, githubFilesObj) {
-                if(err) return false;
-                if(!githubFilesObj[Object.keys(githubFilesObj)[0]]) return false
+                if(err) return console.error("Github recog error");
+                if(!githubFilesObj[Object.keys(githubFilesObj)[0]]) return console.error("No file");
 
                 let githubFileNames = Object.keys(githubFilesObj);
                 let githubDifferenceText = githubFilesObj[githubFileNames[0]].text;
