@@ -11,7 +11,7 @@ function associateTrelloUser(userObj) {
 }
 var submitGoogleForm = require(__dirname + "/googleformssubmit.js");
 var uploadFileToGoogle = require(__dirname + "/googlefileupload.js");
-var recognizeGithubPath = require(__dirname + "/githubpathrecog.js");
+var recognizeGithubPath = require(__dirname + "/_experimental_githubpathrecog.js");
 var processGithubDiff = require(__dirname + "/githubdiffcalc.js");
 var renderText = require(__dirname + "/rendertext.js");
 
@@ -48,18 +48,15 @@ app.post("/webhook", function(req,res) {
             let documentor = associateTrelloUser({id:bodyParse.action.idMemberCreator}).realName || "Robo Jones";
             let githubFilePath = cardBody.customFieldItems.find(x=>x.idCustomField=="5da6e15f9c98160fd8581746").value.text;
 
-            recognizeGithubPath(githubFilePath, function(err, githubFileObj) {
+            recognizeGithubPath(githubFilePath, function(err, githubFilesObj) {
                 if(err) return false;
-                if(!githubFileObj.items[0]) return false;
+                if(!githubFilesObj[Object.keys(githubFilesObj)[0]]) return false
 
-                let githubHtmlUrl = githubFileObj.items[0].html_url;
-                let tokenizedHtmlUrl = githubHtmlUrl.split("/");
-                let blobHashIndex = tokenizedHtmlUrl.indexOf("blob") + 1;
-                if(!blobHashIndex) return;
-                tokenizedHtmlUrl[blobHashIndex - 1] = "commit";
-                let commitUrl = tokenizedHtmlUrl.slice(0,blobHashIndex + 1).join("/");
-                processGithubDiff(commitUrl, githubFileObj.items[0].name, function(err, githubDifferenceText) {
-                    if(err) return false;
+                let githubFileNames = Object.keys(githubFilesObj);
+                let githubDifferenceText = githubFilesObj[githubFileNames[0]].text;
+                for(let i = 0; i < githubFileNames.length; i++) {
+                    if(githubFilesObj[githubFileNames[i]].text.length > githubDifferenceText.length) githubDifferenceText = githubFilesObj[githubFileNames[i]]
+                }
 
                     let imgBuffer = renderText(githubDifferenceText);
                     fs.writeFileSync("ftc_doc.png", imgBuffer);
@@ -86,7 +83,6 @@ app.post("/webhook", function(req,res) {
                             if(err) console.error(err);
                         });
                     });
-                });
             });
         });
     }
