@@ -49,16 +49,21 @@ app.post("/webhook", function(req,res) {
             let githubFilePath = cardBody.customFieldItems.find(x=>x.idCustomField=="5da6e15f9c98160fd8581746").value.text;
 
             recognizeGithubPath(githubFilePath, function(err, githubFilesObj) {
-                if(err) return console.error("Github recog error");
+                if(err) return console.error("Github recog error",err);
                 if(!githubFilesObj[Object.keys(githubFilesObj)[0]]) return console.error("No file");
 
                 let githubFileNames = Object.keys(githubFilesObj);
                 let githubDifferenceText = githubFilesObj[githubFileNames[0]].text;
+                let githubDifferenceFile = githubFileNames[0];
+
                 for(let i = 0; i < githubFileNames.length; i++) {
-                    if(githubFilesObj[githubFileNames[i]].text.length > githubDifferenceText.length) githubDifferenceText = githubFilesObj[githubFileNames[i]]
+                    if(githubFilesObj[githubFileNames[i]].text.length > githubDifferenceText.length) { 
+                        githubDifferenceText = githubFilesObj[githubFileNames[i]];
+                        githubDifferenceFile = githubFileNames[i];
+                    }
                 }
 
-                    let imgBuffer = renderText(githubDifferenceText);
+                    let imgBuffer = renderText(githubDifferenceFile, githubDifferenceText);
                     fs.writeFileSync("ftc_doc.png", imgBuffer);
 
                     uploadFileToGoogle(imgBuffer, auth.googleCookie, "ftc_doc.png", function(err, data) {

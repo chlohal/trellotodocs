@@ -27,6 +27,7 @@ function gitUpdateCallback(err, stdout, stderr) {
             paths.map(b=>escapeShell(b)).join(" ") +
             ") --no-color --numstat | cat", {cwd: repoOwnerPath + "/" + repo.repo}, function(err, stdout, stderr) {
          if(typeof stdout != "string") stdout = stdout.toString();
+         console.log(stdout);
          let diffSummaries = stdout.split("--TRELLOTODOCSGITPARSINGBOUNDRY--").slice(1).join("--TRELLOTODOCSGITPARSINGBOUNDRY--").split("\n").map(c=>c.split(/\s+/));
          diffSummaries.forEach(d=>d[2]=d.slice(2).join(" "));
 
@@ -36,14 +37,19 @@ function gitUpdateCallback(err, stdout, stderr) {
          for(let i = 0; i < paths.length; i++) {
              let currentPath = paths[i];
              let largestChangeCount = -1;
-             let largestChangeFile = diffSummaries[0][2];
+             let largestChangeFile = diffSummaries[0][2].trim();
+
              for(let j = 0; j < diffSummaries.length; j++) {
                  if(matchesSpec(currentPath, diffSummaries[j][2]) && largestChangeCount < parseInt(diffSummaries[j][1]) + parseInt(diffSummaries[j][0])) {
                      largestChangeFile = diffSummaries[j][2].trim();
                      largestChangeCount = parseInt(diffSummaries[j][0]) + parseInt(diffSummaries[j][1]);
                  }
              }
+             console.log('lcf',largestChangeFile);
+
              cp.exec("git show " + stdout.split("--TRELLOTODOCSGITPARSINGBOUNDRY--")[0] + ":" + largestChangeFile + " | cat", {cwd: repoOwnerPath + "/" + repo.repo}, function(showErr, showStdout, showStderr) {
+                 if(showErr || showStderr) return topLevelCallback(showErr || showStderr);
+
                  completedFileCount++;
 
                  if(typeof showStdout != "string") showStdout = showStdout.toString();
@@ -59,7 +65,7 @@ function gitUpdateCallback(err, stdout, stderr) {
 }
 }
 function matchesSpec(spec, path) {
-    return wildmatch(path, spec);
+    return wildmatch(path, spec, {matchBase: true});
 }
 function escapeShell(str) {
     return str.replace(/(.)/, "\\$1");
