@@ -14,6 +14,7 @@ var uploadFileToGoogle = require(__dirname + "/googlefileupload.js");
 var recognizeGithubPath = require(__dirname + "/_experimental_githubpathrecog.js");
 var processGithubDiff = require(__dirname + "/githubdiffcalc.js");
 var renderText = require(__dirname + "/rendertext.js");
+var getGithubBlobContents = require(__dirname + "/githubblobcontents.js");
 
 app.use(function(req, res, next){
     req.pipe(concat(function(data){
@@ -25,6 +26,28 @@ app.use(function(req, res, next){
 app.get("/", function(req, res) {
     res.sendFile(__dirname + "/pages/index.html");
 });
+app.get("/renderblob/:repoOwner/:repoName", function(req, res) {
+
+    if(!req.query.file) return res.sendStatus(400);
+
+    let blobContents = getGithubBlobContents(req.params.repoOwner, req.params.repoName, req.query.file, function(blobContents) {
+        if(!blobContents) return res.sendStatus(404);
+
+        res.set("Content-Type","image/png");
+        res.send(renderText(blobContents));
+    });
+});
+
+app.get("/renderblob/:repoOwner/:repoName/:hash", function(req, res) {
+
+    let blobContents = getGithubBlobContents(req.params.repoOwner, req.params.repoName, req.params.hash, function(blobContents) {
+        if(!blobContents) return res.sendStatus(404);
+
+        res.set("Content-Type","image/png");
+        res.send(renderText(blobContents));
+    });
+});
+
 app.get("/renderedtext", function(req, res) {
     res.sendFile(__dirname + "/ftc_doc.png");
 });
@@ -55,6 +78,7 @@ app.post("/webhook", function(req,res) {
                 let githubFileNames = Object.keys(githubFilesObj);
                 let githubDifferenceText = githubFilesObj[githubFileNames[0]].text;
                 let githubDifferenceFile = githubFileNames[0];
+                let githubDifferenceUrl = githubFilesObj[githubFileNames[0]].url;
 
                 for(let i = 0; i < githubFileNames.length; i++) {
                     if(githubFilesObj[githubFileNames[i]].text.length > githubDifferenceText.length) { 
@@ -66,11 +90,12 @@ app.post("/webhook", function(req,res) {
                     let imgBuffer = renderText(githubDifferenceFile, githubDifferenceText);
                     fs.writeFileSync("ftc_doc.png", imgBuffer);
 
-                    uploadFileToGoogle(imgBuffer, auth.googleCookie, "ftc_doc.png", function(err, data) {
+                    let fileTime = Date.now();
+                    uploadFileToGoogle(imgBuffer, auth.googleCookie, "ftc_doc"+fileTime+".png", function(err, data) {
                         let jsonData = JSON.parse(data);
                         let imageId = jsonData.sessionStatus.additionalInfo["uploader_service.GoogleRupioAdditionalInfo"].completionInfo.customerSpecificInfo.id;
 
-                        let formImageSubmitString = JSON.stringify([[[imageId,"ftc_doc.png","image/png"]]]);
+                        let formImageSubmitString = JSON.stringify([[[imageId,"ftc_doc"+fileTime+".png","image/png"]]]);
                         let formData = {};
 
                         formData[auth.formFieldMedia] = formImageSubmitString;
@@ -81,6 +106,7 @@ app.post("/webhook", function(req,res) {
                         formData[auth.formFieldDate + "_year"] = day.getFullYear();
                         formData[auth.formFieldDate + "_month"] = day.getMonth() + 1;
                         formData[auth.formFieldDate + "_day"] = day.getDate();
+                        formData[auth.formFieldMediaAsURL] = githubDifferenceUrl;
 
                         console.log(formData);
 

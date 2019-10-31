@@ -55,7 +55,8 @@ function gitUpdateCallback(err, stdout, stderr) {
                  if(typeof showStdout != "string") showStdout = showStdout.toString();
                  fileDiffs[largestChangeFile] = {
                      text: showStdout,
-                     rank: largestChangeCount
+                     rank: largestChangeCount,
+                     url: require(__dirname + "/auth.json").domain + "/renderblob/" + repo.owner + "/" + repo.repo + "?file=" + encodeURIComponent(stdout.split("--TRELLOTODOCSGITPARSINGBOUNDRY--")[0] + ":" + largestChangeFile)
                  }
 
                  if(completedFileCount = paths.length) topLevelCallback(null, fileDiffs);
