@@ -6,7 +6,7 @@ var wildmatch = require("wildmatch");
 var defaultRepo = "@nhs-t10/delta-v";
 
 module.exports = function(path, topLevelCallback) {
-    let paths = path.split(/;\s+/);
+    let paths = path.split(/;\s*/);
 
     let repo = parseFileRepo(paths[0]);
 
@@ -20,8 +20,9 @@ module.exports = function(path, topLevelCallback) {
     else cp.exec("git pull", {cwd: repoOwnerPath + "/" + repo.repo}, gitUpdateCallback);
 
 function gitUpdateCallback(err, stdout, stderr) {
-    if(stderr) return topLevelCallback(stderr);
+    //git uses stderr for some reason?? if(stderr) return topLevelCallback(stderr);
 
+    console.log(paths.map(b=>escapeShell(b)));
     cp.exec("git log -n 1 --pretty=\"format:%H\" -- " + paths.map(b=>escapeShell(b)).join(" ")  +
             " && echo --TRELLOTODOCSGITPARSINGBOUNDRY-- && git diff $(git log -n 2 --pretty=\"format:%H\" -- " +
             paths.map(b=>escapeShell(b)).join(" ") +
@@ -59,7 +60,7 @@ function gitUpdateCallback(err, stdout, stderr) {
                      url: require(__dirname + "/auth.json").domain + "/renderblob/" + repo.owner + "/" + repo.repo + "?file=" + encodeURIComponent(stdout.split("--TRELLOTODOCSGITPARSINGBOUNDRY--")[0] + ":" + largestChangeFile)
                  }
 
-                 if(completedFileCount = paths.length) topLevelCallback(null, fileDiffs);
+                 if(completedFileCount == paths.length) topLevelCallback(null, fileDiffs);
              });
          }
     });
@@ -69,7 +70,7 @@ function matchesSpec(spec, path) {
     return wildmatch(path, spec, {matchBase: true});
 }
 function escapeShell(str) {
-    return str.replace(/(.)/, "\\$1");
+    return str.replace(/(\W)/, "\\$1");
 }
 
 function parseFileRepo(ref) {

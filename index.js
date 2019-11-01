@@ -81,24 +81,13 @@ app.post("/webhook", function(req,res) {
                 let githubDifferenceUrl = githubFilesObj[githubFileNames[0]].url;
 
                 for(let i = 0; i < githubFileNames.length; i++) {
-                    if(githubFilesObj[githubFileNames[i]].text.length > githubDifferenceText.length) { 
+                    if(githubFilesObj[githubFileNames[i]].text.length > githubDifferenceText.length) {
                         githubDifferenceText = githubFilesObj[githubFileNames[i]];
                         githubDifferenceFile = githubFileNames[i];
                     }
                 }
-
-                    let imgBuffer = renderText(githubDifferenceFile, githubDifferenceText);
-                    fs.writeFileSync("ftc_doc.png", imgBuffer);
-
-                    let fileTime = Date.now();
-                    uploadFileToGoogle(imgBuffer, auth.googleCookie, "ftc_doc"+fileTime+".png", function(err, data) {
-                        let jsonData = JSON.parse(data);
-                        let imageId = jsonData.sessionStatus.additionalInfo["uploader_service.GoogleRupioAdditionalInfo"].completionInfo.customerSpecificInfo.id;
-
-                        let formImageSubmitString = JSON.stringify([[[imageId,"ftc_doc"+fileTime+".png","image/png"]]]);
                         let formData = {};
 
-                        formData[auth.formFieldMedia] = formImageSubmitString;
                         formData[auth.formFieldMembers] = peopleWhoWorkedOnIt.join(", ");
                         formData[auth.formFieldFeature] = featureName;
                         formData[auth.formFieldProgress] = dayProgress;
@@ -113,7 +102,6 @@ app.post("/webhook", function(req,res) {
                         submitGoogleForm(auth.docFormId, formData, auth.googleCookie, function(err, res, dat) {
                             if(err) console.error(err);
                         });
-                    });
             });
         });
     }
